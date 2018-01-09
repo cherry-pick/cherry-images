@@ -71,7 +71,9 @@ RUN dnf -y --nodocs update \
                         bash \
                         dnf \
                         fedora-release \
-        && dnf clean all
+        && dnf \
+                --installroot=/usr/src/build/sysroot \
+                clean all
 
 RUN tar \
         --acls \
