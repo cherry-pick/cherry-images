@@ -1,0 +1,74 @@
+#!/bin/bash
+
+#
+# cherry-images - mkimage
+#
+# This script takes a tarball as input (stdin) and writes it to a newly created
+# file-system image (e.g., xfs) via a loop-back mount. This uses qemu-img as
+# backend for the image file to create a qcow2 image. This way, unused
+# file-system space will not occupy any disk space.
+#
+# Example:
+#
+#     tar \
+#       --xattrs \
+#       --acls \
+#       --numeric-owner \
+#       -C path/to/source/dir \
+#       -cf - . | ./scripts/mkimage path/to/staging/dir
+#
+#     This will create the staging dir and leave around an "image.qcow2" file
+#     that contains the entire source directory as file-system tree.
+#
+
+set -e
+
+#
+# stderr/stdout helpers
+out() { printf "$1 $2\n" "${@:3}"; }
+error() { out "==> ERROR:" "$@"; } >&2
+die() { error "$@"; exit 1; }
+
+#
+# Shift command-line arguments.
+(( $# )) ||  die 'Missing arguments.'
+ARG_DIR="$1"; shift
+
+#
+# Configuration
+ARG_IMAGE_SIZE="32G"
+ARG_IMAGE_STAGE="${ARG_DIR}/stage.qcow2"
+ARG_IMAGE_FILE="${ARG_DIR}/image.qcow2"
+ARG_IMAGE_MNT="${ARG_DIR}/mnt"
+ARG_NBD_DEVICE="/dev/nbd7"
+
+#
+# Verify the staging directory is non-existant, and then create it.
+[[ ! -d "${ARG_DIR}" ]] || die "Staging dir already exists: %s" "${ARG_DIR}"
+mkdir -p "${ARG_DIR}"
+
+#
+# Create and bind new qcow2 image
+qemu-img create -f qcow2 "${ARG_IMAGE_STAGE}" "${ARG_IMAGE_SIZE}"
+sudo qemu-nbd --connect="${ARG_NBD_DEVICE}" "${ARG_IMAGE_STAGE}"
+
+#
+# Create xfs file-system and mount image
+sudo mkfs.xfs "${ARG_NBD_DEVICE}"
+mkdir -p "${ARG_IMAGE_MNT}"
+sudo mount "${ARG_NBD_DEVICE}" "${ARG_IMAGE_MNT}"
+
+#
+# Copy data
+sudo tar --xattrs --acls -p -C "${ARG_IMAGE_MNT}" -xf -
+
+#
+# Unmount and disconnect qcow2 image
+sudo umount "${ARG_IMAGE_MNT}"
+rmdir "${ARG_IMAGE_MNT}"
+sudo qemu-nbd --disconnect "${ARG_NBD_DEVICE}"
+
+#
+# Compress image
+qemu-img convert -c -f qcow2 -O qcow2 "${ARG_IMAGE_STAGE}" "${ARG_IMAGE_FILE}"
+rm -- "${ARG_IMAGE_STAGE}"

@@ -1,0 +1,5 @@
+[Mount]
+What=/dev/vdb1
+Where=/mnt/cherryimages/input
+Type=vfat
+Options=ro
