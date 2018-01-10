@@ -68,8 +68,18 @@ RUN mkdir -p "/home/cherryimages"
 RUN echo -e "root:\ncherryimages:" | chpasswd
 RUN chsh -s "/bin/bash" "cherryimages"
 
+RUN echo -e "[Match]\nName=en*\n[Network]\nDHCP=yes" \
+        >/etc/systemd/network/50-cherryimages.network
+RUN echo "L+ /etc/resolv.conf - - - - ../run/systemd/resolve/resolv.conf" \
+        >/etc/tmpfiles.d/cherryimages.conf
+RUN systemctl enable systemd-networkd.service
+RUN systemctl enable systemd-resolved.service
+
+RUN mkdir -p /etc/systemd/system-generators
+RUN ln -s /dev/null /etc/systemd/system-generators/systemd-getty-generator
+
 #
-# Disable horrific automated dnf metadata updates
+# Disable automated dnf metadata updates
 #
 
 RUN systemctl disable dnf-makecache.service
