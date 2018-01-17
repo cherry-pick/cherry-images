@@ -1,3 +1,5 @@
 *
 !cherryimages.service
-!mnt-cherryimages-input.mount
+!cherryimages-modules.conf
+!mnt-cherryimages-bin.mount
+!mnt-cherryimages-src.mount

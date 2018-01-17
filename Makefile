@@ -13,6 +13,7 @@ ARCH			?= x86_64
 ARCH_TARGET		?= x86_64
 QEMU_BIN_ARCH		?= x86_64
 QEMU_PKG_ARCH		?= x86
+QEMU_TTY_PREFIX		?= ttyS
 
 VM_TARGET		?= ci
 FOREIGN_BASE		?= cherrypick/cherryimages-fedora-base:x86_64-latest
@@ -115,6 +116,7 @@ images/fedora/vmrun:
 		--tag "cherrypick/cherryimages-fedora-vmservice:$(ARCH_TARGET)-stage" \
 		--build-arg "FEDORA_ARCH=$(ARCH_TARGET)" \
 		--build-arg "FEDORA_BASE=cherrypick/cherryimages-fedora-$(VM_TARGET):$(ARCH_TARGET)-latest" \
+		--build-arg "FEDORA_TTY_OUTPUT=/dev/$(QEMU_TTY_PREFIX)1" \
 		images/fedora/vmservice
 	{ \
 		set -e ; \
@@ -174,40 +176,55 @@ rebuild-basic:
 		ARCH=$(REBUILD)
 .PHONY: rebuild-basic
 
-rebuild-x86_64:
-	$(MAKE) rebuild-basic REBUILD=x86_64
+rebuild-vmrun-x86_64:
 	$(MAKE) images/fedora/vmrun \
 		ARCH=x86_64 \
 		ARCH_TARGET=x86_64 \
 		QEMU_BIN_ARCH=x86_64 \
-		QEMU_PKG_ARCH=x86
+		QEMU_PKG_ARCH=x86 \
+		QEMU_TTY_PREFIX=ttyS
 	$(MAKE) tag-images/fedora/vmrun \
 		ARCH=x86_64 \
 		ARCH_TARGET=x86_64
+.PHONY: rebuild-vmrun-x86_64
+
+rebuild-x86_64:
+	$(MAKE) rebuild-basic REBUILD=x86_64
+	$(MAKE) rebuild-vmrun-x86_64
 .PHONY: rebuild-x86_64
 
-rebuild-i686:
-	$(MAKE) rebuild-basic REBUILD=i686
+rebuild-vmrun-i686:
 	$(MAKE) images/fedora/vmrun \
 		ARCH=x86_64 \
 		ARCH_TARGET=i686 \
 		QEMU_BIN_ARCH=i386 \
-		QEMU_PKG_ARCH=x86
+		QEMU_PKG_ARCH=x86 \
+		QEMU_TTY_PREFIX=ttyS
 	$(MAKE) tag-images/fedora/vmrun \
 		ARCH=x86_64 \
 		ARCH_TARGET=i686
 .PHONY: rebuild-i686
 
-rebuild-armv7hl:
-	$(MAKE) rebuild-basic REBUILD=armv7hl
+rebuild-i686:
+	$(MAKE) rebuild-basic REBUILD=i686
+	$(MAKE) rebuild-vmrun-i686
+.PHONY: rebuild-i686
+
+rebuild-vmrun-armv7hl:
 	$(MAKE) images/fedora/vmrun \
 		ARCH=x86_64 \
 		ARCH_TARGET=armv7hl \
 		QEMU_BIN_ARCH=arm \
-		QEMU_PKG_ARCH=arm
+		QEMU_PKG_ARCH=arm \
+		QEMU_TTY_PREFIX=ttyAMA
 	$(MAKE) tag-images/fedora/vmrun \
 		ARCH=x86_64 \
 		ARCH_TARGET=armv7hl
+.PHONY: rebuild-armv7hl
+
+rebuild-armv7hl:
+	$(MAKE) rebuild-basic REBUILD=armv7hl
+	$(MAKE) rebuild-vmrun-armv7hl
 .PHONY: rebuild-armv7hl
 
 #

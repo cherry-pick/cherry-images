@@ -55,11 +55,15 @@ RUN dnf -y --nodocs update \
 # Copy image
 #
 
-RUN mkdir -p "/mnt/cherryimages" "/mnt/cherryimages/input"
+RUN mkdir -p \
+        "/mnt/cherryimages/" \
+        "/mnt/cherryimages/bin" \
+        "/mnt/cherryimages/src"
 ADD \
         "stage-${FEDORA_ARCH_TARGET}" \
         "/mnt/cherryimages/stage-${FEDORA_ARCH_TARGET}"
 ADD "entrypoint" "/mnt/cherryimages/"
+ADD "debug" "/mnt/cherryimages/"
 
 #
 # Configure entrypoint

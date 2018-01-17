@@ -1,14 +1,19 @@
 [Unit]
-After=mnt-cherryimages-input.mount
+After=mnt-cherryimages-bin.mount
+After=mnt-cherryimages-src.mount
 After=network-online.target
-Requires=mnt-cherryimages-input.mount
+Requires=mnt-cherryimages-bin.mount
+Requires=mnt-cherryimages-src.mount
 Requires=network-online.target
 StartLimitAction=poweroff-force
 
 [Service]
 Type=oneshot
 User=cherryimages
+Group=cherryimages
 FailureAction=poweroff-force
-ExecStart=/mnt/cherryimages/input/main
-ExecStartPost=+/bin/bash -c 'echo -n success >/dev/ttyS1'
+ExecStartPre=+/usr/bin/mkdir /var/lib/cherryimages
+ExecStartPre=+/usr/bin/chown cherryimages:cherryimages /var/lib/cherryimages
+ExecStart=/mnt/cherryimages/bin/main
+ExecStartPost=+/bin/bash -c 'echo -n success >/mnt/cherryimages/tty-output'
 ExecStartPost=+/usr/bin/systemctl poweroff

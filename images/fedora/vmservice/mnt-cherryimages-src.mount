@@ -1,0 +1,5 @@
+[Mount]
+What=cherryimages-src
+Where=/mnt/cherryimages/src
+Type=9p
+Options=ro,trans=virtio,version=9p2000.L

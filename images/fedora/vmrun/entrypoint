@@ -2,15 +2,6 @@
 
 set -e
 
-#
-# For debug-mode, pass as arguments to this script:
-#
-#     systemd.wants=serial-getty@<TTY> systemd.mask=cherryimages
-#
-# This will mask the vm-service, and instead request a getty on on the serial
-# line connected to the kernel console.
-#
-
 # figure out some arch-specific parameters
 case "$FEDORA_ARCH_TARGET" in
 armv7hl)
@@ -25,7 +16,7 @@ esac
 
 # Compose qemu cmdline
 if [[ -z $QEMU_CMDLINE ]] ; then
-        QEMU_CMDLINE=""
+        QEMU_CMDLINE="${QEMU_CMDLINE_PRE}"
 
         # setup interactive lines
         QEMU_CMDLINE+=" -nographic -vga none"
@@ -42,8 +33,10 @@ if [[ -z $QEMU_CMDLINE ]] ; then
         # pass volumes
         QEMU_CMDLINE+=" -drive id=hd0,if=none,format=qcow2,file=/mnt/cherryimages/stage-${FEDORA_ARCH_TARGET}/runtime.qcow2"
         QEMU_CMDLINE+=" -device virtio-blk-pci,drive=hd0"
-        QEMU_CMDLINE+=" -drive id=hd1,if=none,readonly,format=raw,file=fat:16:/mnt/cherryimages/input"
+        QEMU_CMDLINE+=" -drive id=hd1,if=none,readonly,format=raw,file=fat:16:/mnt/cherryimages/bin"
         QEMU_CMDLINE+=" -device virtio-blk-pci,drive=hd1"
+        QEMU_CMDLINE+=" -fsdev local,id=hd2,readonly,security_model=none,path=/mnt/cherryimages/src"
+        QEMU_CMDLINE+=" -device virtio-9p-pci,fsdev=hd2,mount_tag=cherryimages-src"
 
         # setup communication line
         QEMU_CMDLINE+=" -serial file:/mnt/cherryimages/output"
@@ -52,11 +45,13 @@ if [[ -z $QEMU_CMDLINE ]] ; then
         if [[ -r "/dev/kvm" && -w "/dev/kvm" ]] ; then
                 QEMU_CMDLINE+=" -enable-kvm"
         fi
+
+        QEMU_CMDLINE+=" ${QEMU_CMDLINE_POST}"
 fi
 
 # Compose kernel cmdline
 if [[ -z $KERNEL_CMDLINE ]] ; then
-        KERNEL_CMDLINE=""
+        KERNEL_CMDLINE="${KERNEL_CMDLINE_PRE}"
 
         # forward all journal contents to the console
         KERNEL_CMDLINE+="    systemd.journald.forward_to_console=yes"
@@ -73,8 +68,7 @@ if [[ -z $KERNEL_CMDLINE ]] ; then
         KERNEL_CMDLINE+=" selinux=0 audit=0"
         KERNEL_CMDLINE+=" console=${SERIAL}"
 
-        # append commandline
-        KERNEL_CMDLINE+=" $@"
+        KERNEL_CMDLINE+=" ${KERNEL_CMDLINE_POST}"
 fi
 
 # clear output file
@@ -89,6 +83,14 @@ if [[ ! -f "/mnt/cherryimages/stage-${FEDORA_ARCH_TARGET}/runtime.qcow2" ]] ; th
                 -F qcow2 \
                 "/mnt/cherryimages/stage-${FEDORA_ARCH_TARGET}/runtime.qcow2"
 fi
+
+# create runner
+cat >"/mnt/cherryimages/bin/main" <<EOF
+#!/bin/bash
+set -e
+cd /var/lib/cherryimages
+exec ${@@Q}
+EOF
 
 # run machine
 "qemu-system-${QEMU_BIN_ARCH}" \

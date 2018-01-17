@@ -22,8 +22,7 @@ ARG FEDORA_ARCH
 #
 #     * users:
 #           The root-user is configured with an empty password. Additionally,
-#           the 'cherryimages' user is added, including its home directory,
-#           unconditional sudo access, and an empty password.
+#           the 'cherryimages' user is added, including sudo-access.
 #
 # Options:
 #
@@ -49,12 +48,20 @@ RUN dnf -y --nodocs --forcearch="${FEDORA_ARCH}" update \
                 util-linux-user \
         && dnf clean all
 
+#
+# Setup cherryimages user
+#
+
 RUN echo \
-        "u cherryimages - - /home/cherryimages" \
+        "u cherryimages - - -" \
         >"/usr/lib/sysusers.d/cherryimages.conf"
 RUN echo \
         "cherryimages ALL=(ALL) NOPASSWD: ALL" \
         >>"/etc/sudoers"
+
+#
+# Trigger setup
+#
 
 RUN systemd-firstboot \
         --locale=en_US.UTF-8 \
@@ -64,9 +71,15 @@ RUN systemd-firstboot \
         --setup-machine-id
 RUN systemd-sysusers
 
-RUN mkdir -p "/home/cherryimages"
-RUN echo -e "root:\ncherryimages:" | chpasswd
-RUN chsh -s "/bin/bash" "cherryimages"
+#
+# Allow login via root
+#
+
+RUN echo "root:" | chpasswd
+
+#
+# Setup default network
+#
 
 RUN echo -e "[Match]\nName=en*\n[Network]\nDHCP=yes" \
         >/etc/systemd/network/50-cherryimages.network
@@ -74,6 +87,10 @@ RUN echo "L+ /etc/resolv.conf - - - - ../run/systemd/resolve/resolv.conf" \
         >/etc/tmpfiles.d/cherryimages.conf
 RUN systemctl enable systemd-networkd.service
 RUN systemctl enable systemd-resolved.service
+
+#
+# Disable automatic serial-line occupation by GETTYs
+#
 
 RUN mkdir -p /etc/systemd/system-generators
 RUN ln -s /dev/null /etc/systemd/system-generators/systemd-getty-generator
