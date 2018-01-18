@@ -1,0 +1,18 @@
+[Unit]
+After=var-lib-cherryimages-bin.mount
+After=var-lib-cherryimages-src.mount
+After=network-online.target
+Requires=var-lib-cherryimages-bin.mount
+Requires=var-lib-cherryimages-src.mount
+Requires=network-online.target
+StartLimitAction=poweroff-force
+
+[Service]
+Type=oneshot
+User=cherryimages
+Group=cherryimages
+FailureAction=poweroff-force
+WorkingDirectory=/var/lib/cherryimages/home
+ExecStart=/var/lib/cherryimages/bin/main
+ExecStartPost=+/bin/bash -c 'echo -n success >/dev/virtio-ports/cherryimages.output'
+ExecStartPost=+/usr/bin/systemctl poweroff

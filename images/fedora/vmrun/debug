@@ -1,6 +1,0 @@
-#!/bin/bash
-
-set -e
-
-KERNEL_CMDLINE_POST="systemd.wants=console-getty systemd.mask=cherryimages" \
-        /mnt/cherryimages/entrypoint "$@"

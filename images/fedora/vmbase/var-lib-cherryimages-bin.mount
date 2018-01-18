@@ -1,5 +1,5 @@
 [Mount]
 What=/dev/vdb1
-Where=/mnt/cherryimages/bin
+Where=/var/lib/cherryimages/bin
 Type=vfat
 Options=ro

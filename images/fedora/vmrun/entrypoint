@@ -5,11 +5,9 @@ set -e
 # figure out some arch-specific parameters
 case "$FEDORA_ARCH_TARGET" in
 armv7hl)
-        SERIAL="ttyAMA0"
         QEMU_MACHINE="-M virt -cpu cortex-a15"
         ;;
 *)
-        SERIAL="ttyS0"
         QEMU_MACHINE="" # use default
         ;;
 esac
@@ -18,28 +16,31 @@ esac
 if [[ -z $QEMU_CMDLINE ]] ; then
         QEMU_CMDLINE="${QEMU_CMDLINE_PRE}"
 
-        # setup interactive lines
-        QEMU_CMDLINE+=" -nographic -vga none"
-        QEMU_CMDLINE+=" -monitor none -serial stdio"
+        # clear defaults
+        QEMU_CMDLINE+=" -nodefaults -nographic"
 
         # setup machine
         QEMU_CMDLINE+=" -m 2G ${QEMU_MACHINE}"
         QEMU_CMDLINE+=" -device virtio-rng-pci"
+        QEMU_CMDLINE+=" -net nic -net user"
+
+        # setup serial lines
+        QEMU_CMDLINE+=" -serial stdio"
+        QEMU_CMDLINE+=" -chardev file,id=serial1,path=/var/lib/cherryimages/output"
+        QEMU_CMDLINE+=" -device virtio-serial"
+        QEMU_CMDLINE+=" -device virtserialport,chardev=serial1,name=cherryimages.output"
 
         # pass kernel+initrd
-        QEMU_CMDLINE+=" -kernel /mnt/cherryimages/stage-${FEDORA_ARCH_TARGET}/linux"
-        QEMU_CMDLINE+=" -initrd /mnt/cherryimages/stage-${FEDORA_ARCH_TARGET}/initrd"
+        QEMU_CMDLINE+=" -kernel /var/lib/cherryimages/stage-${FEDORA_ARCH_TARGET}/linux"
+        QEMU_CMDLINE+=" -initrd /var/lib/cherryimages/stage-${FEDORA_ARCH_TARGET}/initrd"
 
         # pass volumes
-        QEMU_CMDLINE+=" -drive id=hd0,if=none,format=qcow2,file=/mnt/cherryimages/stage-${FEDORA_ARCH_TARGET}/runtime.qcow2"
+        QEMU_CMDLINE+=" -drive id=hd0,if=none,format=qcow2,file=/var/lib/cherryimages/stage-${FEDORA_ARCH_TARGET}/runtime.qcow2"
         QEMU_CMDLINE+=" -device virtio-blk-pci,drive=hd0"
-        QEMU_CMDLINE+=" -drive id=hd1,if=none,readonly,format=raw,file=fat:16:/mnt/cherryimages/bin"
+        QEMU_CMDLINE+=" -drive id=hd1,if=none,readonly,format=raw,file=fat:16:/var/lib/cherryimages/bin"
         QEMU_CMDLINE+=" -device virtio-blk-pci,drive=hd1"
-        QEMU_CMDLINE+=" -fsdev local,id=hd2,readonly,security_model=none,path=/mnt/cherryimages/src"
+        QEMU_CMDLINE+=" -fsdev local,id=hd2,readonly,security_model=none,path=/var/lib/cherryimages/src"
         QEMU_CMDLINE+=" -device virtio-9p-pci,fsdev=hd2,mount_tag=cherryimages-src"
-
-        # setup communication line
-        QEMU_CMDLINE+=" -serial file:/mnt/cherryimages/output"
 
         # use kvm if accessible and mapped
         if [[ -r "/dev/kvm" && -w "/dev/kvm" ]] ; then
@@ -66,29 +67,31 @@ if [[ -z $KERNEL_CMDLINE ]] ; then
 
         # disable security for now
         KERNEL_CMDLINE+=" selinux=0 audit=0"
-        KERNEL_CMDLINE+=" console=${SERIAL}"
+        KERNEL_CMDLINE+=" console=${QEMU_TTY_PREFIX}0"
+
+        # pull in cherryimages.service
+        KERNEL_CMDLINE+=" systemd.wants=cherryimages.service"
 
         KERNEL_CMDLINE+=" ${KERNEL_CMDLINE_POST}"
 fi
 
 # clear output file
-rm -f -- "/mnt/cherryimages/output"
+rm -f -- "/var/lib/cherryimages/output"
 
 # create COW overlay, unless it already exists
-if [[ ! -f "/mnt/cherryimages/stage-${FEDORA_ARCH_TARGET}/runtime.qcow2" ]] ; then
+if [[ ! -f "/var/lib/cherryimages/stage-${FEDORA_ARCH_TARGET}/runtime.qcow2" ]] ; then
         qemu-img \
                 create \
                 -f qcow2 \
                 -b image.qcow2 \
                 -F qcow2 \
-                "/mnt/cherryimages/stage-${FEDORA_ARCH_TARGET}/runtime.qcow2"
+                "/var/lib/cherryimages/stage-${FEDORA_ARCH_TARGET}/runtime.qcow2"
 fi
 
 # create runner
-cat >"/mnt/cherryimages/bin/main" <<EOF
+cat >"/var/lib/cherryimages/bin/main" <<EOF
 #!/bin/bash
 set -e
-cd /var/lib/cherryimages
 exec ${@@Q}
 EOF
 
@@ -98,7 +101,7 @@ EOF
         ${QEMU_CMDLINE}
 
 # verify machine executed successfully
-[[ $(cat "/mnt/cherryimages/output") = "success" ]] || exit 1
+[[ $(cat "/var/lib/cherryimages/output") = "success" ]] || exit 1
 
 #
 # We explicitly leave the QCOW2 overlay, as well as the output from ttyS1

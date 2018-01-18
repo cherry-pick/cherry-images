@@ -2,14 +2,16 @@ ARG FEDORA_ARCH=x86_64
 ARG FEDORA_BASE=cherrypick/cherryimages-fedora-base:${FEDORA_ARCH}-latest
 FROM ${FEDORA_BASE}
 ARG FEDORA_ARCH
-ARG FEDORA_ARCH_TARGET=x86_64
-ARG QEMU_BIN_ARCH=x86_64
-ARG QEMU_PKG_ARCH=x86
+ARG FEDORA_ARCH_TARGET
+ARG QEMU_BIN_ARCH
+ARG QEMU_PKG_ARCH
+ARG QEMU_TTY_PREFIX
 
 ENV FEDORA_ARCH=${FEDORA_ARCH}
 ENV FEDORA_ARCH_TARGET=${FEDORA_ARCH_TARGET}
 ENV QEMU_BIN_ARCH=${QEMU_BIN_ARCH}
 ENV QEMU_PKG_ARCH=${QEMU_PKG_ARCH}
+ENV QEMU_TTY_PREFIX=${QEMU_TTY_PREFIX}
 
 #
 # cherry-images - fedora vmrun
@@ -24,16 +26,16 @@ ENV QEMU_PKG_ARCH=${QEMU_PKG_ARCH}
 #
 #     FEDORA_ARCH: Fedora architecture to build. This defaults to x86_64.
 #
-#     FEDORA_ARCH_TARGET: Fedora target architecture to emulate. This defaults
-#                         to x86_64.
+#     FEDORA_ARCH_TARGET: Fedora target architecture to emulate.
 #
 #     FEDORA_BASE: Fedora base image to build on. This defaults to:
 #                  `cherrypick/cherryimages-fedora-base:${FEDORA_ARCH}-latest`
 #
-#     QEMU_BIN_ARCH: Qemu architecture suffix for binary. Defaults to x86_64.
+#     QEMU_BIN_ARCH: Qemu architecture suffix for binary.
 #
-#     QEMU_PKG_ARCH: Qemu architecture suffix for fedora package. Defaults to
-#                    x86.
+#     QEMU_PKG_ARCH: Qemu architecture suffix for fedora package.
+#
+#     QEMU_TTY_PREFIX: Qemu tty-prefix this architecture uses for serial lines.
 #
 
 #
@@ -56,17 +58,16 @@ RUN dnf -y --nodocs update \
 #
 
 RUN mkdir -p \
-        "/mnt/cherryimages/" \
-        "/mnt/cherryimages/bin" \
-        "/mnt/cherryimages/src"
+        "/var/lib/cherryimages/" \
+        "/var/lib/cherryimages/bin" \
+        "/var/lib/cherryimages/src"
 ADD \
         "stage-${FEDORA_ARCH_TARGET}" \
-        "/mnt/cherryimages/stage-${FEDORA_ARCH_TARGET}"
-ADD "entrypoint" "/mnt/cherryimages/"
-ADD "debug" "/mnt/cherryimages/"
+        "/var/lib/cherryimages/stage-${FEDORA_ARCH_TARGET}"
+ADD "entrypoint" "/var/lib/cherryimages/"
 
 #
 # Configure entrypoint
 #
 
-ENTRYPOINT ["/mnt/cherryimages/entrypoint"]
+ENTRYPOINT ["/var/lib/cherryimages/entrypoint"]

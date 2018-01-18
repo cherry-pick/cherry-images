@@ -1,12 +1,12 @@
 ARG FEDORA_ARCH=x86_64
-ARG FEDORA_BASE=cherrypick/cherryimages-fedora-boot:${FEDORA_ARCH}-latest
+ARG FEDORA_BASE=cherrypick/cherryimages-fedora-base:${FEDORA_ARCH}-latest
 FROM ${FEDORA_BASE}
 ARG FEDORA_ARCH
 
 #
 # cherry-images - fedora CI
 #
-# The 'fedora-ci' image is a Fedora OS image based on the 'fedora-boot'
+# The 'fedora-ci' image is a Fedora OS image based on the 'fedora-base'
 # cherry-image. It simply adds packages required by basic CI systems.
 #
 # Options:
@@ -14,7 +14,7 @@ ARG FEDORA_ARCH
 #     FEDORA_ARCH: Fedora architecture to build. This defaults to x86_64.
 #
 #     FEDORA_BASE: Fedora base image to build on. This defaults to:
-#                  `cherrypick/cherryimages-fedora-boot:${FEDORA_ARCH}-latest`
+#                  `cherrypick/cherryimages-fedora-base:${FEDORA_ARCH}-latest`
 #
 #
 
