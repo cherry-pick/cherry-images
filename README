@@ -1,0 +1,23 @@
+cherry-images - Random collection of container and VM images
+
+ABOUT:
+        The cherry-images repository contains a random collection of container
+        and VM image compilation instructions. See their respective users for
+        details.
+
+DETAILS:
+        https://github.com/cherry-pick/cherry-images/wiki
+
+BUG REPORTS:
+        https://github.com/cherry-pick/cherry-images/issues
+
+GIT:
+        git@github.com:cherry-pick/cherry-images.git
+        https://github.com/cherry-pick/cherry-images.git
+
+GITWEB:
+        https://github.com/cherry-pick/cherry-images
+
+LICENSE:
+        Apache Software License 2.0
+        See COPYING for details.
