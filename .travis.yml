@@ -1,0 +1,51 @@
+sudo: required
+
+services:
+  - docker
+
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y binfmt-support qemu-utils qemu-user-static
+  - sudo modprobe nbd
+  - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
+  - update-binfmts --display
+  - sudo bash -c 'echo -1 >/proc/sys/fs/binfmt_misc/qemu-arm'
+  - sudo
+    LINE=":qemu-arm:M::\x7fELF\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x28\x00:\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfe\xff\xff\xff:/usr/bin/qemu-arm-static:F"
+    bash -c 'echo $LINE >/proc/sys/fs/binfmt_misc/register'
+  - update-binfmts --display
+
+
+stages:
+  - test
+  - name: deploy
+    if:     type = push
+        AND repo = cherry-pick/cherry-images
+        AND branch =~ ^(master|v[0-9]+)$
+
+jobs:
+  include:
+    - stage: test
+      script:
+        - make ci-pre
+        - make ci-x86_64 DEPLOY=no TAG=$(TRAVIS_BRANCH)
+    - stage: test
+      script:
+        - make ci-pre
+        - make ci-i686 DEPLOY=no TAG=$(TRAVIS_BRANCH)
+    - stage: test
+      script:
+        - make ci-pre
+        - make ci-armv7hl DEPLOY=no TAG=$(TRAVIS_BRANCH)
+    - stage: deploy
+      script:
+        - make ci-pre
+        - make ci-x86_64 DEPLOY=yes TAG=$(TRAVIS_BRANCH)
+    - stage: deploy
+      script:
+        - make ci-pre
+        - make ci-i686 DEPLOY=yes TAG=$(TRAVIS_BRANCH)
+    - stage: deploy
+      script:
+        - make ci-pre
+        - make ci-armv7hl DEPLOY=yes TAG=$(TRAVIS_BRANCH)
