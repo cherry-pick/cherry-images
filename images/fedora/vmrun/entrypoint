@@ -2,6 +2,9 @@
 
 set -e
 
+# select target if none pre-selected
+TARGET_UNIT=${TARGET_UNIT-"cherryimages.service"}
+
 # figure out some arch-specific parameters
 case "$FEDORA_ARCH_TARGET" in
 armv7hl)
@@ -70,7 +73,7 @@ if [[ -z $KERNEL_CMDLINE ]] ; then
         KERNEL_CMDLINE+=" console=${QEMU_TTY_PREFIX}0"
 
         # pull in cherryimages.service
-        KERNEL_CMDLINE+=" systemd.wants=cherryimages.service"
+        KERNEL_CMDLINE+=" systemd.wants=${TARGET_UNIT}"
 
         KERNEL_CMDLINE+=" ${KERNEL_CMDLINE_POST}"
 fi
@@ -88,10 +91,14 @@ if [[ ! -f "/var/lib/cherryimages/stage-${FEDORA_ARCH_TARGET}/runtime.qcow2" ]] 
                 "/var/lib/cherryimages/stage-${FEDORA_ARCH_TARGET}/runtime.qcow2"
 fi
 
+# preserve environment
+printf "%s\n" "${CHERRY_ENV}" >"/var/lib/cherryimages/bin/env"
+
 # create runner
 cat >"/var/lib/cherryimages/bin/main" <<EOF
 #!/bin/bash
 set -e
+export CHERRY_ENV="$(cat /var/lib/cherryimages/bin/env)"
 exec ${@@Q}
 EOF
 

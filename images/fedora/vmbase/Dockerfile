@@ -118,6 +118,8 @@ RUN systemctl disable dnf-makecache.timer
 #
 
 ADD "cherryimages.service" "/etc/systemd/system"
+ADD "cherryimages-getty.service" "/etc/systemd/system"
+ADD "cherryimages-shell.service" "/etc/systemd/system"
 ADD "var-lib-cherryimages-bin.mount" "/etc/systemd/system"
 ADD "var-lib-cherryimages-src.mount" "/etc/systemd/system"
 ADD "cherryimages-modules.conf" "/etc/modules-load.d/"

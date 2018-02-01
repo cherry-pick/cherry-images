@@ -1,0 +1,20 @@
+[Unit]
+Before=var-lib-cherryimages-bin.mount
+Before=var-lib-cherryimages-src.mount
+Before=network-online.target
+Wants=var-lib-cherryimages-bin.mount
+Wants=var-lib-cherryimages-src.mount
+Wants=network-online.target
+StartLimitAction=poweroff-force
+
+[Service]
+Type=idle
+Restart=always
+ExecStart=-/sbin/agetty -o '-p -- \\u' --noclear --keep-baud console 115200,38400,9600 $TERM
+UtmpIdentifier=cons
+TTYPath=/dev/console
+TTYReset=yes
+TTYVHangup=yes
+KillMode=process
+IgnoreSIGPIPE=no
+SendSIGHUP=yes

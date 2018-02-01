@@ -43,6 +43,10 @@ ARG_IMAGE_MNT="${ARG_DIR}/mnt"
 ARG_NBD_DEVICE="/dev/nbd7"
 
 #
+# Load nbd if non-existant
+[[ -e "${ARG_NBD_DEVICE}" ]] || modprobe nbd
+
+#
 # Verify the staging directory is non-existant, and then create it.
 [[ ! -d "${ARG_DIR}" ]] || die "Staging dir already exists: %s" "${ARG_DIR}"
 mkdir -p "${ARG_DIR}"

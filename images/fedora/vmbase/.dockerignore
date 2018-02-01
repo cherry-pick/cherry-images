@@ -1,5 +1,7 @@
 *
 !cherryimages.service
+!cherryimages-getty.service
 !cherryimages-modules.conf
+!cherryimages-shell.service
 !var-lib-cherryimages-bin.mount
 !var-lib-cherryimages-src.mount
