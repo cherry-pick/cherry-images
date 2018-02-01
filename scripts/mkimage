@@ -44,7 +44,7 @@ ARG_NBD_DEVICE="/dev/nbd7"
 
 #
 # Load nbd if non-existant
-[[ -e "${ARG_NBD_DEVICE}" ]] || modprobe nbd
+[[ -e "${ARG_NBD_DEVICE}" ]] || sudo modprobe nbd
 
 #
 # Verify the staging directory is non-existant, and then create it.

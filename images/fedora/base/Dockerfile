@@ -1,84 +1,94 @@
-ARG FEDORA_ARCH=x86_64
-ARG FEDORA_BASE=cherrypick/cherryimages-fedora-base:${FEDORA_ARCH}-latest
-FROM ${FEDORA_BASE}
-ARG FEDORA_ARCH
-ARG FEDORA_RELEASE=27
-
 #
 # cherry-images - fedora base
 #
 # The 'fedora-base' image is a Fedora OS image with just the 'bash' and 'dnf'
 # packages installed. In other words, it contains the minimal amount of
-# packages to be suitable to install any other Fedora package.
-#
-# Note that this Dockerfile is self-hosting. That is, it depends on a previous
-# build of itself. If such an image is not available (e.g., bootstrapping a
-# foreign architecture), you should use an existing image with qemu-user-static
-# for the target architecture installed.
+# packages to be suitable to install any other Fedora package. Additionally, it
+# supports being cross-bootstrapped. Meaning, you can instantiate the image for
+# other foreign architectures. Since this requires binfmt-qemu emulation, the
+# base package includes qemu-user-static. This is obsolete with newer kernels
+# (the 'F' binfmt-misc flag first appeared in linux-v4.8), but needed for
+# compatibility with older systems.
 #
 # Be aware that this Dockerfile does not create the final image! On the
-# contrary, it bootstraps the 'fedora-base' image into /usr/src/build/sysroot
-# and provides a tarball of that directory as /usr/src/build/sysroot.tar. You
-# should copy it out of there and import it into docker to get your new
-# 'fedora-base' image. For instance, the following commands use this Dockerfile
-# to build 'myimage', and then import it as new base-image as
-# 'cherrypick/cherryimages-fedora-base:i686-latest'.
-#
-#       docker build \
-#               -t myimage \
-#               --build-arg FEDORA_ARCH=i686 \
-#               images/fedora/base
-#
-#       docker run \
-#               --rm \
-#               --entrypoint cat \
-#               myimage \
-#               /usr/src/build/sysroot.tar | \
-#                       docker import \
-#                               - \
-#                               cherrypick/cherryimages-fedora-base:i686-latest
+# contrary, it bootstraps the 'fedora-base' image into
+# /var/lib/cherryimages/sysroot and provides a tarball of that directory as
+# /var/lib/cherryimages/sysroot.tar. You should copy it out of there and import
+# it into docker to get your new 'fedora-base' image. This is needed because
+# the 'COPY' docker-command does not support overriding /proc and friends in
+# live images. Furthermore, it strips ownership from files, which is really
+# unfortunate. Hence, you need the intermediate image. Use 'docker import' to
+# get a fresh base image from the sysroot.tar file.
 #
 # Options:
 #
-#     FEDORA_ARCH: Fedora architecture to build. This defaults to x86_64.
+#     CHERRY_FEDORA_ARCH: Fedora architecture to build.
 #
-#     FEDORA_BASE: Fedora base image to build on. This defaults to:
-#                  `cherrypick/cherryimages-fedora-base:${FEDORA_ARCH}-latest`
-#
-#     FEDORA_RELEASE: The fedora release to build. This is updated to the
-#                     latest release automatically.
+#     CHERRY_FEDORA_RELEASE: The fedora release to build.
 #
 
-RUN dnf -y --nodocs update \
-        && dnf -y --nodocs install \
-                coreutils \
-                tar \
-        && dnf clean all
+FROM cherrypick/cherryimages-source AS source
 
-RUN mkdir -p /usr/src/build/sysroot
+#
+# Setup Bootstrap
+#
+# We use the official fedora images to bootstrap our image. We fully rely on
+# these to be kept up-to-date. We don't update them manually. This speeds up
+# the build considerably.
+#
 
-RUN dnf -y --nodocs update \
-        && dnf \
+FROM fedora AS bootstrap
+
+ARG CHERRY_FEDORA_ARCH
+ARG CHERRY_FEDORA_RELEASE
+
+#
+# Import Qemu
+#
+# The dnf post-install scriptlets might invoke random binaries. Hence, we need
+# a qemu interpreter in case we bootstrap foreign architectures.
+# We rely on the caller to use proper qemu integration with kernel binfmts. In
+# case the kernel does not support the 'F' flag, we provide a statically linked
+# interpreter in the image itself.
+#
+
+COPY --from=source "/var/lib/cherryimages/qemu/" "/usr/bin/"
+
+#
+# Bootstrap Fedora
+#
+# We bootstrap an entire distro into /var/lib/cherryimages/sysroot. Prepare the
+# directory and then invoke dnf to bootstrap into it.
+#
+
+RUN mkdir -p /var/lib/cherryimages/sysroot
+
+# Fedora's qemu-user-static is broken on i386... Use our own.
+COPY --from=source "/var/lib/cherryimages/qemu/" "/var/lib/cherryimages/sysroot/usr/bin/"
+
+RUN dnf \
                 -y \
                 --nodocs \
                 --repo=fedora \
                 --repo=updates \
-                --releasever="${FEDORA_RELEASE}" \
-                --forcearch="${FEDORA_ARCH}" \
-                --installroot=/usr/src/build/sysroot \
+                --forcearch="${CHERRY_FEDORA_ARCH}" \
+                --releasever="${CHERRY_FEDORA_RELEASE}" \
+                --installroot=/var/lib/cherryimages/sysroot \
                 --setopt=install_weak_deps=False \
                 install \
                         bash \
                         dnf \
                         fedora-release \
+                        tar \
         && dnf \
-                --installroot=/usr/src/build/sysroot \
+                --installroot=/var/lib/cherryimages/sysroot \
                 clean all
 
 RUN tar \
+        -p \
         --acls \
         --xattrs \
         --numeric-owner \
-        -cf /usr/src/build/sysroot.tar \
-        -C /usr/src/build/sysroot \
+        -cf "/var/lib/cherryimages/sysroot.tar" \
+        -C "/var/lib/cherryimages/sysroot/" \
         .

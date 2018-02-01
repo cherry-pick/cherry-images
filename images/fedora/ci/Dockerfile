@@ -1,8 +1,3 @@
-ARG FEDORA_ARCH=x86_64
-ARG FEDORA_BASE=cherrypick/cherryimages-fedora-base:${FEDORA_ARCH}-latest
-FROM ${FEDORA_BASE}
-ARG FEDORA_ARCH
-
 #
 # cherry-images - fedora CI
 #
@@ -11,15 +6,21 @@ ARG FEDORA_ARCH
 #
 # Options:
 #
-#     FEDORA_ARCH: Fedora architecture to build. This defaults to x86_64.
+#     CHERRY_FEDORA_ARCH: Fedora architecture to build.
 #
-#     FEDORA_BASE: Fedora base image to build on. This defaults to:
-#                  `cherrypick/cherryimages-fedora-base:${FEDORA_ARCH}-latest`
-#
+#     CHERRY_BASE: Base image to build on.
 #
 
-RUN dnf -y --nodocs --forcearch="${FEDORA_ARCH}" update \
-        && dnf -y --nodocs --forcearch="${FEDORA_ARCH}" install \
+ARG CHERRY_BASE
+FROM ${CHERRY_BASE}
+ARG CHERRY_FEDORA_ARCH
+
+RUN dnf \
+        -y \
+        --nodocs \
+        --forcearch="${CHERRY_FEDORA_ARCH}" \
+        --setopt=install_weak_deps=False \
+        install \
                 autoconf \
                 automake \
                 binutils-devel \
@@ -28,6 +29,7 @@ RUN dnf -y --nodocs --forcearch="${FEDORA_ARCH}" update \
                 coreutils \
                 dbus-devel \
                 expat-devel \
+                file \
                 flex-devel \
                 gawk \
                 gcc \
@@ -40,6 +42,7 @@ RUN dnf -y --nodocs --forcearch="${FEDORA_ARCH}" update \
                 groff \
                 gzip \
                 libtool \
+                lld \
                 m4 \
                 make \
                 meson \

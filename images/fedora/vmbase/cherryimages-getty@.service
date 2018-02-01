@@ -5,14 +5,16 @@ Before=network-online.target
 Wants=var-lib-cherryimages-bin.mount
 Wants=var-lib-cherryimages-src.mount
 Wants=network-online.target
+BindsTo=dev-%i.device
+After=dev-%i.device
 StartLimitAction=poweroff-force
 
 [Service]
 Type=idle
 Restart=always
-ExecStart=-/sbin/agetty -o '-p -- \\u' --noclear --keep-baud console 115200,38400,9600 $TERM
-UtmpIdentifier=cons
-TTYPath=/dev/console
+ExecStart=-/sbin/agetty -o '-p -- \\u' --noclear --keep-baud 115200,38400,9600 %I $TERM
+UtmpIdentifier=%I
+TTYPath=/dev/%I
 TTYReset=yes
 TTYVHangup=yes
 KillMode=process

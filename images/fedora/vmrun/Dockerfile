@@ -1,18 +1,3 @@
-ARG FEDORA_ARCH=x86_64
-ARG FEDORA_BASE=cherrypick/cherryimages-fedora-base:${FEDORA_ARCH}-latest
-FROM ${FEDORA_BASE}
-ARG FEDORA_ARCH
-ARG FEDORA_ARCH_TARGET
-ARG QEMU_BIN_ARCH
-ARG QEMU_PKG_ARCH
-ARG QEMU_TTY_PREFIX
-
-ENV FEDORA_ARCH=${FEDORA_ARCH}
-ENV FEDORA_ARCH_TARGET=${FEDORA_ARCH_TARGET}
-ENV QEMU_BIN_ARCH=${QEMU_BIN_ARCH}
-ENV QEMU_PKG_ARCH=${QEMU_PKG_ARCH}
-ENV QEMU_TTY_PREFIX=${QEMU_TTY_PREFIX}
-
 #
 # cherry-images - fedora vmrun
 #
@@ -24,33 +9,41 @@ ENV QEMU_TTY_PREFIX=${QEMU_TTY_PREFIX}
 #
 # Options:
 #
-#     FEDORA_ARCH: Fedora architecture to build. This defaults to x86_64.
+#     CHERRY_FEDORA_ARCH: Fedora architecture to build for.
 #
-#     FEDORA_ARCH_TARGET: Fedora target architecture to emulate.
+#     CHERRY_FEDORA_ARCH_HOST: Fedora architecture to build on.
 #
-#     FEDORA_BASE: Fedora base image to build on. This defaults to:
-#                  `cherrypick/cherryimages-fedora-base:${FEDORA_ARCH}-latest`
+#     CHERRY_BASE: Base image to build on.
 #
-#     QEMU_BIN_ARCH: Qemu architecture suffix for binary.
+#     CHERRY_QEMU_BIN_ARCH: Qemu architecture suffix for binary.
 #
-#     QEMU_PKG_ARCH: Qemu architecture suffix for fedora package.
+#     CHERRY_QEMU_PKG_ARCH: Qemu architecture suffix for fedora package.
 #
-#     QEMU_TTY_PREFIX: Qemu tty-prefix this architecture uses for serial lines.
-#
+
+ARG CHERRY_BASE
+FROM ${CHERRY_BASE}
+ARG CHERRY_FEDORA_ARCH
+ARG CHERRY_FEDORA_ARCH_HOST
+ARG CHERRY_QEMU_BIN_ARCH
+ARG CHERRY_QEMU_PKG_ARCH
+
+ENV CHERRY_FEDORA_ARCH=${CHERRY_FEDORA_ARCH}
+ENV CHERRY_FEDORA_ARCH_HOST=${CHERRY_FEDORA_ARCH_HOST}
+ENV CHERRY_QEMU_BIN_ARCH=${CHERRY_QEMU_BIN_ARCH}
+ENV CHERRY_QEMU_PKG_ARCH=${CHERRY_QEMU_PKG_ARCH}
 
 #
 # Install requirements
 #
 
-RUN dnf -y --nodocs update \
-        && dnf \
-                -y \
-                --nodocs \
-                --forcearch="${FEDORA_ARCH}" \
-                --setopt=install_weak_deps=False \
-                install \
-                        "qemu-system-${QEMU_PKG_ARCH}" \
-                        "qemu-img" \
+RUN dnf \
+        -y \
+        --nodocs \
+        --forcearch="${CHERRY_FEDORA_ARCH_HOST}" \
+        --setopt=install_weak_deps=False \
+        install \
+                "qemu-system-${CHERRY_QEMU_PKG_ARCH}" \
+                "qemu-img" \
         && dnf clean all
 
 #
@@ -62,8 +55,8 @@ RUN mkdir -p \
         "/var/lib/cherryimages/bin" \
         "/var/lib/cherryimages/src"
 ADD \
-        "stage-${FEDORA_ARCH_TARGET}" \
-        "/var/lib/cherryimages/stage-${FEDORA_ARCH_TARGET}"
+        "stage-${CHERRY_FEDORA_ARCH}" \
+        "/var/lib/cherryimages/stage-${CHERRY_FEDORA_ARCH}"
 ADD "entrypoint" "/var/lib/cherryimages/"
 
 #

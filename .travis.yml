@@ -3,49 +3,72 @@ sudo: required
 services:
   - docker
 
-before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y binfmt-support qemu-utils qemu-user-static
-  - sudo modprobe nbd
-  - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
-  - update-binfmts --display
-  - sudo bash -c 'echo -1 >/proc/sys/fs/binfmt_misc/qemu-arm'
-  - sudo
-    LINE=":qemu-arm:M::\x7fELF\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x28\x00:\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfe\xff\xff\xff:/usr/bin/qemu-arm-static:F"
-    bash -c 'echo $LINE >/proc/sys/fs/binfmt_misc/register'
-  - update-binfmts --display
+addons:
+  apt:
+    packages:
+      - binfmt-support
+      - qemu-user-static
+      - qemu-utils
 
+before_install:
+  - echo -n "${DOCKER_PASSWORD}" | docker login --password-stdin -u "${DOCKER_USERNAME}"
 
 stages:
-  - test
-  - name: deploy
+  - name: deploy-base
     if:     type = push
         AND repo = cherry-pick/cherry-images
-        AND branch =~ ^(master|v[0-9]+)$
+        AND branch = master
+  - name: deploy-vmbase
+    if:     type = push
+        AND repo = cherry-pick/cherry-images
+        AND branch = master
+  - name: deploy-ci
+    if:     type = push
+        AND repo = cherry-pick/cherry-images
+        AND branch = master
+  - name: deploy-vmrun
+    if:     type = push
+        AND repo = cherry-pick/cherry-images
+        AND branch = master
+  - name: tag
+    if:     type = push
+        AND repo = cherry-pick/cherry-images
+        AND branch =~ ^v[0-9]+$
 
 jobs:
   include:
-    - stage: test
+    - stage: deploy-base
       script:
-        - make ci-pre
-        - make ci-x86_64 DEPLOY=no TAG=$(TRAVIS_BRANCH)
-    - stage: test
+        - make ci-base ARCH=armv7hl DEPLOY=yes TAG=latest
+    - script:
+        - make ci-base ARCH=i686 DEPLOY=yes TAG=latest
+    - script:
+        - make ci-base ARCH=x86_64 DEPLOY=yes TAG=latest
+    - stage: deploy-vmbase
       script:
-        - make ci-pre
-        - make ci-i686 DEPLOY=no TAG=$(TRAVIS_BRANCH)
-    - stage: test
+        - make ci-vmbase ARCH=armv7hl DEPLOY=yes TAG=latest
+    - script:
+        - make ci-vmbase ARCH=i686 DEPLOY=yes TAG=latest
+    - script:
+        - make ci-vmbase ARCH=x86_64 DEPLOY=yes TAG=latest
+    - stage: deploy-ci
       script:
-        - make ci-pre
-        - make ci-armv7hl DEPLOY=no TAG=$(TRAVIS_BRANCH)
-    - stage: deploy
+        - make ci-ci ARCH=armv7hl DEPLOY=yes TAG=latest
+    - script:
+        - make ci-ci ARCH=i686 DEPLOY=yes TAG=latest
+    - script:
+        - make ci-ci ARCH=x86_64 DEPLOY=yes TAG=latest
+    - stage: deploy-vmrun
       script:
-        - make ci-pre
-        - make ci-x86_64 DEPLOY=yes TAG=$(TRAVIS_BRANCH)
-    - stage: deploy
+        - make ci-vmrun ARCH=armv7hl DEPLOY=yes TAG=latest
+    - script:
+        - make ci-vmrun ARCH=i686 DEPLOY=yes TAG=latest
+    - script:
+        - make ci-vmrun ARCH=x86_64 DEPLOY=yes TAG=latest
+    - stage: tag
       script:
-        - make ci-pre
-        - make ci-i686 DEPLOY=yes TAG=$(TRAVIS_BRANCH)
-    - stage: deploy
-      script:
-        - make ci-pre
-        - make ci-armv7hl DEPLOY=yes TAG=$(TRAVIS_BRANCH)
+        - make ci-tag-push ARCH=armv7hl "TAG=${TRAVIS_BRANCH}"
+    - script:
+        - make ci-tag-push ARCH=i686 "TAG=${TRAVIS_BRANCH}"
+    - script:
+        - make ci-tag-push ARCH=x86_64 "TAG=${TRAVIS_BRANCH}"

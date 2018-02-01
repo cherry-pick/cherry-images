@@ -1,94 +1,168 @@
 #!/bin/bash
 
+#
+# cherry-images - vmrun Entrypoint
+#
+
 set -e
 
-# select target if none pre-selected
-TARGET_UNIT=${TARGET_UNIT-"cherryimages.service"}
+#
+# Configuration
+CHERRY_DEBUG=0
+CHERRY_KERNEL_ARGS=
+CHERRY_PRESERVE=0
+CHERRY_QEMU_ARGS=
+CHERRY_TARGET="exec"
+CHERRY_TTY_STDIO=
+CHERRY_TTY_LOG=
 
-# figure out some arch-specific parameters
-case "$FEDORA_ARCH_TARGET" in
+#
+# Stderr/Stdout Helpers
+out() { printf "$1 $2\n" "${@:3}"; }
+error() { out "==> ERROR:" "$@"; } >&2
+msg() { out "==>" "$@"; }
+msg2() { out "  ->" "$@";}
+die() { error "$@"; exit 1; }
+
+#
+# Parse Options
+while getopts ':dpt:' flag ; do
+        case $flag in
+        d)
+                # Debug mode
+                CHERRY_DEBUG=1
+                ;;
+        p)
+                # Preserve CHERRY_ENV
+                CHERRY_PRESERVE=1
+                ;;
+        t)
+                # Select execution target
+                CHERRY_TARGET="${OPTARG}"
+                ;;
+        :)
+                die '%s: option requires an argument -- '\''%s'\' "${0##*/}" "${OPTARG}"
+                ;;
+        ?)
+                die '%s: invalid option -- '\''%s'\' "${0##*/}" "${OPTARG}"
+                ;;
+        esac
+done
+shift $(( OPTIND - 1 ))
+
+#
+# Clear environment unless requested otherwise
+if (( ! CHERRY_PRESERVE )) ; then
+        CHERRY_ENV=""
+fi
+
+#
+# Configure builtin architecture
+case "${CHERRY_FEDORA_ARCH}" in
 armv7hl)
-        QEMU_MACHINE="-M virt -cpu cortex-a15"
+        CHERRY_QEMU_ARGS+=" -M virt -cpu cortex-a15"
+        CHERRY_TTY_STDIO="ttyAMA0"
+        CHERRY_TTY_LOG="ttyS0"
+        ;;
+i686)
+        CHERRY_TTY_STDIO="ttyS0"
+        CHERRY_TTY_LOG="ttyS4"
+        ;;
+s390x)
+        CHERRY_TTY_STDIO="ttyS0"
+        CHERRY_TTY_LOG="ttyS4"
+        ;;
+x86_64)
+        CHERRY_TTY_STDIO="ttyS0"
+        CHERRY_TTY_LOG="ttyS4"
         ;;
 *)
-        QEMU_MACHINE="" # use default
+        die '%s: invalid architecture -- '\''%s'\' "${0##*/}" "${CHERRY_FEDORA_ARCH}"
         ;;
 esac
 
-# Compose qemu cmdline
-if [[ -z $QEMU_CMDLINE ]] ; then
-        QEMU_CMDLINE="${QEMU_CMDLINE_PRE}"
+#
+# Parse target
+case "${CHERRY_TARGET}" in
+exec)
+        CHERRY_KERNEL_ARGS+=" systemd.wants=cherryimages@${CHERRY_TTY_STDIO}.service"
+        ;;
+getty)
+        CHERRY_KERNEL_ARGS+=" systemd.wants=cherryimages-getty@${CHERRY_TTY_STDIO}.service"
+        ;;
+shell)
+        CHERRY_KERNEL_ARGS+=" systemd.wants=cherryimages-shell@${CHERRY_TTY_STDIO}.service"
+        ;;
+*)
+        die '%s: invalid target -- '\''%s'\' "${0##*/}" "${CHERRY_TARGET}"
+        ;;
+esac
 
-        # clear defaults
-        QEMU_CMDLINE+=" -nodefaults -nographic"
+# clear defaults
+CHERRY_QEMU_ARGS+=" -nodefaults -nographic"
 
-        # setup machine
-        QEMU_CMDLINE+=" -m 2G ${QEMU_MACHINE}"
-        QEMU_CMDLINE+=" -device virtio-rng-pci"
-        QEMU_CMDLINE+=" -net nic -net user"
+# setup machine
+CHERRY_QEMU_ARGS+=" -m 2G"
+CHERRY_QEMU_ARGS+=" -device virtio-rng-pci"
+CHERRY_QEMU_ARGS+=" -net nic -net user"
 
-        # setup serial lines
-        QEMU_CMDLINE+=" -serial stdio"
-        QEMU_CMDLINE+=" -chardev file,id=serial1,path=/var/lib/cherryimages/output"
-        QEMU_CMDLINE+=" -device virtio-serial"
-        QEMU_CMDLINE+=" -device virtserialport,chardev=serial1,name=cherryimages.output"
+# setup serial lines
+CHERRY_QEMU_ARGS+=" -serial stdio"
+CHERRY_QEMU_ARGS+=" -chardev file,id=serial-output,path=/var/lib/cherryimages/output"
+CHERRY_QEMU_ARGS+=" -chardev file,id=serial-log,path=/var/lib/cherryimages/log"
+CHERRY_QEMU_ARGS+=" -device pci-serial,chardev=serial-log"
+CHERRY_QEMU_ARGS+=" -device virtio-serial"
+CHERRY_QEMU_ARGS+=" -device virtserialport,chardev=serial-output,name=cherryimages.output"
 
-        # pass kernel+initrd
-        QEMU_CMDLINE+=" -kernel /var/lib/cherryimages/stage-${FEDORA_ARCH_TARGET}/linux"
-        QEMU_CMDLINE+=" -initrd /var/lib/cherryimages/stage-${FEDORA_ARCH_TARGET}/initrd"
+# pass kernel+initrd
+CHERRY_QEMU_ARGS+=" -kernel /var/lib/cherryimages/stage-${CHERRY_FEDORA_ARCH}/linux"
+CHERRY_QEMU_ARGS+=" -initrd /var/lib/cherryimages/stage-${CHERRY_FEDORA_ARCH}/initrd"
 
-        # pass volumes
-        QEMU_CMDLINE+=" -drive id=hd0,if=none,format=qcow2,file=/var/lib/cherryimages/stage-${FEDORA_ARCH_TARGET}/runtime.qcow2"
-        QEMU_CMDLINE+=" -device virtio-blk-pci,drive=hd0"
-        QEMU_CMDLINE+=" -drive id=hd1,if=none,readonly,format=raw,file=fat:16:/var/lib/cherryimages/bin"
-        QEMU_CMDLINE+=" -device virtio-blk-pci,drive=hd1"
-        QEMU_CMDLINE+=" -fsdev local,id=hd2,readonly,security_model=none,path=/var/lib/cherryimages/src"
-        QEMU_CMDLINE+=" -device virtio-9p-pci,fsdev=hd2,mount_tag=cherryimages-src"
+# pass volumes
+CHERRY_QEMU_ARGS+=" -drive id=hd0,if=none,format=qcow2,file=/var/lib/cherryimages/stage-${CHERRY_FEDORA_ARCH}/runtime.qcow2"
+CHERRY_QEMU_ARGS+=" -device virtio-blk-pci,drive=hd0"
+CHERRY_QEMU_ARGS+=" -drive id=hd1,if=none,readonly,format=raw,file=fat:16:/var/lib/cherryimages/bin"
+CHERRY_QEMU_ARGS+=" -device virtio-blk-pci,drive=hd1"
+CHERRY_QEMU_ARGS+=" -fsdev local,id=hd2,readonly,security_model=none,path=/var/lib/cherryimages/src"
+CHERRY_QEMU_ARGS+=" -device virtio-9p-pci,fsdev=hd2,mount_tag=cherryimages-src"
 
-        # use kvm if accessible and mapped
-        if [[ -r "/dev/kvm" && -w "/dev/kvm" ]] ; then
-                QEMU_CMDLINE+=" -enable-kvm"
-        fi
-
-        QEMU_CMDLINE+=" ${QEMU_CMDLINE_POST}"
+# use kvm if accessible and mapped
+if [[ -r "/dev/kvm" && -w "/dev/kvm" ]] ; then
+        CHERRY_QEMU_ARGS+=" -enable-kvm"
 fi
 
-# Compose kernel cmdline
-if [[ -z $KERNEL_CMDLINE ]] ; then
-        KERNEL_CMDLINE="${KERNEL_CMDLINE_PRE}"
+# forward all journal contents to the console
+CHERRY_KERNEL_ARGS+="    systemd.journald.forward_to_console=yes"
+CHERRY_KERNEL_ARGS+=" rd.systemd.journald.forward_to_console=yes"
 
-        # forward all journal contents to the console
-        KERNEL_CMDLINE+="    systemd.journald.forward_to_console=yes"
-        KERNEL_CMDLINE+=" rd.systemd.journald.forward_to_console=yes"
+# disable dynamic progress output on the console
+CHERRY_KERNEL_ARGS+="    systemd.show_status=no"
+CHERRY_KERNEL_ARGS+=" rd.systemd.show_status=no"
 
-        # disable dynamic progress output on the console
-        KERNEL_CMDLINE+="    systemd.show_status=no"
-        KERNEL_CMDLINE+=" rd.systemd.show_status=no"
+# mount root FS writable
+CHERRY_KERNEL_ARGS+=" rw root=/dev/vda"
 
-        # mount root FS writable
-        KERNEL_CMDLINE+=" rw root=/dev/vda"
+# disable security for now
+CHERRY_KERNEL_ARGS+=" selinux=0 audit=0"
 
-        # disable security for now
-        KERNEL_CMDLINE+=" selinux=0 audit=0"
-        KERNEL_CMDLINE+=" console=${QEMU_TTY_PREFIX}0"
-
-        # pull in cherryimages.service
-        KERNEL_CMDLINE+=" systemd.wants=${TARGET_UNIT}"
-
-        KERNEL_CMDLINE+=" ${KERNEL_CMDLINE_POST}"
+# inline log if requested
+if (( CHERRY_DEBUG )) ; then
+        CHERRY_KERNEL_ARGS+=" console=${CHERRY_TTY_STDIO}"
+else
+        CHERRY_KERNEL_ARGS+=" console=${CHERRY_TTY_LOG}"
 fi
 
 # clear output file
 rm -f -- "/var/lib/cherryimages/output"
 
 # create COW overlay, unless it already exists
-if [[ ! -f "/var/lib/cherryimages/stage-${FEDORA_ARCH_TARGET}/runtime.qcow2" ]] ; then
+if [[ ! -f "/var/lib/cherryimages/stage-${CHERRY_FEDORA_ARCH}/runtime.qcow2" ]] ; then
         qemu-img \
                 create \
                 -f qcow2 \
                 -b image.qcow2 \
                 -F qcow2 \
-                "/var/lib/cherryimages/stage-${FEDORA_ARCH_TARGET}/runtime.qcow2"
+                "/var/lib/cherryimages/stage-${CHERRY_FEDORA_ARCH}/runtime.qcow2"
 fi
 
 # preserve environment
@@ -98,20 +172,20 @@ printf "%s\n" "${CHERRY_ENV}" >"/var/lib/cherryimages/bin/env"
 cat >"/var/lib/cherryimages/bin/main" <<EOF
 #!/bin/bash
 set -e
-export CHERRY_ENV="$(cat /var/lib/cherryimages/bin/env)"
+export CHERRY_ENV="\$(cat /var/lib/cherryimages/bin/env)"
 exec ${@@Q}
 EOF
 
 # run machine
-"qemu-system-${QEMU_BIN_ARCH}" \
-        -append "${KERNEL_CMDLINE}" \
-        ${QEMU_CMDLINE}
+"qemu-system-${CHERRY_QEMU_BIN_ARCH}" \
+        -append "${CHERRY_KERNEL_ARGS}" \
+        ${CHERRY_QEMU_ARGS}
 
 # verify machine executed successfully
 [[ $(cat "/var/lib/cherryimages/output") = "success" ]] || exit 1
 
 #
-# We explicitly leave the QCOW2 overlay, as well as the output from ttyS1
+# We explicitly leave the QCOW2 overlay, as well as the output from ttyX
 # untouched. Thus, they can be expected for debugging purposes afterwards. If
 # the image is meant to be re-used, just create a new throw-away container.
 #

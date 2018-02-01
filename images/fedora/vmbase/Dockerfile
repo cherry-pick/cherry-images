@@ -1,8 +1,3 @@
-ARG FEDORA_ARCH=x86_64
-ARG FEDORA_BASE=cherrypick/cherryimages-fedora-base:${FEDORA_ARCH}-latest
-FROM ${FEDORA_BASE}
-ARG FEDORA_ARCH
-
 #
 # cherry-images - fedora vmbase
 #
@@ -14,11 +9,14 @@ ARG FEDORA_ARCH
 #
 # Options:
 #
-#     FEDORA_ARCH: Fedora architecture to build. This defaults to x86_64.
+#     CHERRY_FEDORA_ARCH: Fedora architecture to build.
 #
-#     FEDORA_BASE: Fedora base image to build on. This defaults to:
-#                  `cherrypick/cherryimages-fedora-base:${FEDORA_ARCH}-latest`
+#     CHERRY_BASE: Base image to build on.
 #
+
+ARG CHERRY_BASE
+FROM ${CHERRY_BASE}
+ARG CHERRY_FEDORA_ARCH
 
 #
 # Configure dracut
@@ -32,8 +30,11 @@ RUN echo "dummy.cmdline" >"/etc/kernel/cmdline" # must be non-empty
 # Bootstrap packages
 #
 
-RUN dnf -y --nodocs --forcearch="${FEDORA_ARCH}" update \
-        && dnf -y --nodocs --forcearch="${FEDORA_ARCH}" \
+RUN dnf \
+                -y \
+                --nodocs \
+                --forcearch="${CHERRY_FEDORA_ARCH}" \
+                --setopt=install_weak_deps=False \
                 --exclude grubby \
                 install \
                         bash \
@@ -117,9 +118,9 @@ RUN systemctl disable dnf-makecache.timer
 # Import configuration
 #
 
-ADD "cherryimages.service" "/etc/systemd/system"
-ADD "cherryimages-getty.service" "/etc/systemd/system"
-ADD "cherryimages-shell.service" "/etc/systemd/system"
+ADD "cherryimages@.service" "/etc/systemd/system"
+ADD "cherryimages-getty@.service" "/etc/systemd/system"
+ADD "cherryimages-shell@.service" "/etc/systemd/system"
 ADD "var-lib-cherryimages-bin.mount" "/etc/systemd/system"
 ADD "var-lib-cherryimages-src.mount" "/etc/systemd/system"
 ADD "cherryimages-modules.conf" "/etc/modules-load.d/"

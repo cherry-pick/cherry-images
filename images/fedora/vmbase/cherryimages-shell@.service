@@ -5,6 +5,8 @@ After=network-online.target
 Requires=var-lib-cherryimages-bin.mount
 Requires=var-lib-cherryimages-src.mount
 Requires=network-online.target
+BindsTo=dev-%i.device
+After=dev-%i.device
 StartLimitAction=poweroff-force
 
 [Service]
@@ -13,6 +15,12 @@ User=cherryimages
 Group=cherryimages
 FailureAction=poweroff-force
 WorkingDirectory=/var/lib/cherryimages/home
-ExecStart=/var/lib/cherryimages/bin/main
+ExecStart=/bin/bash -i
 ExecStartPost=+/bin/bash -c 'echo -n success >/dev/virtio-ports/cherryimages.output'
 ExecStartPost=+/usr/bin/systemctl poweroff
+StandardInput=tty-force
+StandardOutput=inherit
+TTYPath=/dev/%I
+KillMode=process
+IgnoreSIGPIPE=no
+SendSIGHUP=yes
