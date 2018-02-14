@@ -192,34 +192,57 @@ ci-vmrun:
 		$(DOCKER) push "cherrypick/cherryimages-fedora-vmrun:$(VMRUN_BASE)-$(ARCH_HOST)-to-$(ARCH)-$(TAG)"
 .PHONY: ci-vmrun
 
-ci-tag-push:
+ci:
+	$(MAKE) ci-base
+	$(MAKE) ci-vmbase
+	$(MAKE) ci-ci
+	$(MAKE) ci-vmrun
+.PHONY: ci
+
+ci-tag-push-verify:
 	@[[ "$(TAG)" != "latest" ]] || { echo "Cannot tag 'latest'" ; exit 1 ; }
-	# base
+.PHONY: ci-tag-push-verify
+
+ci-tag-push-base: ci-tag-push-verify
 	$(DOCKER) pull cherrypick/cherryimages-fedora-base:$(ARCH)-latest
 	$(DOCKER) tag cherrypick/cherryimages-fedora-base:$(ARCH)-latest \
 		cherrypick/cherryimages-fedora-base:$(ARCH)-$(TAG)
 	$(DOCKER) push cherrypick/cherryimages-fedora-base:$(ARCH)-$(TAG)
 	$(DOCKER) image rm cherrypick/cherryimages-fedora-base:$(ARCH)-$(TAG)
 	$(DOCKER) image rm cherrypick/cherryimages-fedora-base:$(ARCH)-latest
-	# vmbase
+.PHONY: ci-tag-push-base
+
+ci-tag-push-vmbase: ci-tag-push-verify
 	$(DOCKER) pull cherrypick/cherryimages-fedora-vmbase:$(ARCH)-latest
 	$(DOCKER) tag cherrypick/cherryimages-fedora-vmbase:$(ARCH)-latest \
 		cherrypick/cherryimages-fedora-vmbase:$(ARCH)-$(TAG)
 	$(DOCKER) push cherrypick/cherryimages-fedora-vmbase:$(ARCH)-$(TAG)
 	$(DOCKER) image rm cherrypick/cherryimages-fedora-vmbase:$(ARCH)-$(TAG)
 	$(DOCKER) image rm cherrypick/cherryimages-fedora-vmbase:$(ARCH)-latest
-	# ci
+.PHONY: ci-tag-push-vmbase
+
+ci-tag-push-ci: ci-tag-push-verify
 	$(DOCKER) pull cherrypick/cherryimages-fedora-ci:$(ARCH)-latest
 	$(DOCKER) tag cherrypick/cherryimages-fedora-ci:$(ARCH)-latest \
 		cherrypick/cherryimages-fedora-ci:$(ARCH)-$(TAG)
 	$(DOCKER) push cherrypick/cherryimages-fedora-ci:$(ARCH)-$(TAG)
 	$(DOCKER) image rm cherrypick/cherryimages-fedora-ci:$(ARCH)-$(TAG)
 	$(DOCKER) image rm cherrypick/cherryimages-fedora-ci:$(ARCH)-latest
-	# vmrun
+.PHONY: ci-tag-push-ci
+
+ci-tag-push-vmrun: ci-tag-push-verify
+	@[[ "$(TAG)" != "latest" ]] || { echo "Cannot tag 'latest'" ; exit 1 ; }
 	$(DOCKER) pull cherrypick/cherryimages-fedora-vmrun:$(VMRUN_BASE)-$(ARCH_HOST)-to-$(ARCH)-latest
 	$(DOCKER) tag cherrypick/cherryimages-fedora-vmrun:$(VMRUN_BASE)-$(ARCH_HOST)-to-$(ARCH)-latest \
 		cherrypick/cherryimages-fedora-vmrun:$(VMRUN_BASE)-$(ARCH_HOST)-to-$(ARCH)-$(TAG)
 	$(DOCKER) push cherrypick/cherryimages-fedora-vmrun:$(VMRUN_BASE)-$(ARCH_HOST)-to-$(ARCH)-$(TAG)
 	$(DOCKER) image rm cherrypick/cherryimages-fedora-vmrun:$(VMRUN_BASE)-$(ARCH_HOST)-to-$(ARCH)-$(TAG)
 	$(DOCKER) image rm cherrypick/cherryimages-fedora-vmrun:$(VMRUN_BASE)-$(ARCH_HOST)-to-$(ARCH)-latest
+.PHONY: ci-tag-push-vmrun
+
+ci-tag-push: ci-tag-push-verify
+	$(MAKE) ci-tag-push-base
+	$(MAKE) ci-tag-push-vmbase
+	$(MAKE) ci-tag-push-ci
+	$(MAKE) ci-tag-push-vmrun
 .PHONY: ci-tag-push
