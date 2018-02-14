@@ -10,6 +10,7 @@ set -e
 # Configuration
 CHERRY_DEBUG=0
 CHERRY_KERNEL_ARGS=
+CHERRY_MEMORY="2G"
 CHERRY_PRESERVE=0
 CHERRY_QEMU_ARGS=
 CHERRY_TARGET="exec"
@@ -26,11 +27,15 @@ die() { error "$@"; exit 1; }
 
 #
 # Parse Options
-while getopts ':dpt:' flag ; do
+while getopts ':dm:pt:' flag ; do
         case $flag in
         d)
                 # Debug mode
                 CHERRY_DEBUG=1
+                ;;
+        m)
+                # Memory amount
+                CHERRY_MEMORY="${OPTARG}"
                 ;;
         p)
                 # Preserve CHERRY_ENV
@@ -102,7 +107,7 @@ esac
 CHERRY_QEMU_ARGS+=" -nodefaults -nographic"
 
 # setup machine
-CHERRY_QEMU_ARGS+=" -m 2G"
+CHERRY_QEMU_ARGS+=" -m ${CHERRY_MEMORY}"
 CHERRY_QEMU_ARGS+=" -device virtio-rng-pci"
 CHERRY_QEMU_ARGS+=" -net nic -net user"
 
