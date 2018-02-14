@@ -1,0 +1,267 @@
+#!/bin/bash
+
+#
+# cherry-images - vmrun
+#
+
+set -e
+
+#
+# Configuration
+CHERRY_BIND=0
+CHERRY_DEBUG=0
+CHERRY_DOCKER=${CHERRY_DOCKER-"docker"}
+CHERRY_ENV=
+CHERRY_KVM=0
+CHERRY_PRESERVE=0
+CHERRY_VM_IMAGE=
+CHERRY_VM_HOST="auto"
+CHERRY_VM_LOG=
+CHERRY_VM_TARGET="auto"
+CHERRY_VM_TYPE="fedora-ci"
+
+#
+# Stderr/Stdout Helpers
+out() { printf "$1 $2\n" "${@:3}"; }
+error() { out "==> ERROR:" "$@"; } >&2
+msg() { out "==>" "$@"; }
+msg2() { out "  ->" "$@";}
+die() { error "$@"; exit 1; }
+
+#
+# Print Usage
+usage() {
+        cat <<EOF
+${0##*/} [OPTIONS..] -- {EXECUTABLE} [ARGS..]
+
+Run executable in an ad-hoc virtual machine.
+
+Options:
+  -h                            Print this help message
+  -d                            Debug mode
+  -k                            Use KVM
+  -b                            Bind EXECUTABLE from host into guest
+  -p                            Preserve environment
+  -V TYPE                       Type of VM image
+  -H ARCH                       Host architecture
+  -T ARCH                       Target architecture
+  -I IMAGE                      Name of image to use
+  -L LOG                        Log file for VM syslog
+EOF
+}
+
+#
+# Parse Options
+while getopts ':bdhkpH:I:L:T:V:' flag ; do
+        case $flag in
+        b)
+                # Bind executable from host to guest
+                CHERRY_BIND=1
+                ;;
+        d)
+                # Debug mode
+                CHERRY_DEBUG=1
+                ;;
+        h)
+                # Print help
+                usage
+                exit 1
+                ;;
+        k)
+                # Use kvm
+                CHERRY_KVM=1
+                ;;
+        p)
+                # Preserve environment
+                CHERRY_PRESERVE=1
+                ;;
+        H)
+                # Host machine
+                CHERRY_VM_HOST="${OPTARG}"
+                ;;
+        I)
+                # VM Image
+                CHERRY_VM_IMAGE="${OPTARG}"
+                ;;
+        L)
+                # Log file
+                CHERRY_VM_LOG="${OPTARG}"
+                ;;
+        T)
+                # Target machine
+                CHERRY_VM_TARGET="${OPTARG}"
+                ;;
+        V)
+                # VM Type
+                CHERRY_VM_TYPE="${OPTARG}"
+                ;;
+        :)
+                die '%s: option requires an argument -- '\''%s'\' "${0##*/}" "${OPTARG}"
+                ;;
+        ?)
+                die '%s: invalid option -- '\''%s'\' "${0##*/}" "${OPTARG}"
+                ;;
+        esac
+done
+shift $(( OPTIND - 1 ))
+
+#
+# Resolve host architecture, if unspecified
+if [[ ${CHERRY_VM_HOST} = "auto" ]] ; then
+        CHERRY_VM_HOST="$(uname -m)"
+fi
+
+#
+# Collect arguments to docker
+#
+# As last step of this script, we spawn a docker machine to
+# execute our runner. We assemble all arguments to 'docker run'
+# in the ARGS array, which will then get expanded as command-
+# line to docker-run. The ARGS_ENT array collects the arguments
+# we pass to our entrypoint in the docker container.
+ARGS=()
+ARGS_ENT=()
+
+#
+# Default Arguments
+#
+# Always run in ephemeral mode (--rm), so the container will be
+# deleted when done. Also, always keep a TTY so the output
+# is properly forwarded to the logs, and input keeps being
+# forwarded to the machine.
+# Lastly, run in interactive mode to make sure the wrapper is
+# attached to the machine for the entire time.
+ARGS+=("--interactive")
+ARGS+=("--rm")
+ARGS+=("--tty")
+
+#
+# Execution Unit
+#
+# Caller must provide command to execute, otherwise we simply
+# spawn a shell / debug login.
+if (( ! $# )) ; then
+        ARGS_ENT+=("-t" "shell")
+        set -- "/bin/bash" "-i"
+
+        # ignore BIND when no binary was specified
+        CHERRY_BIND=0
+fi
+
+#
+# Possibly forward KVM
+#
+# If the caller requested KVM support, we forward the device.
+# It is up to the container to actually detect this and make
+# use of it.
+if (( CHERRY_KVM )) ; then
+        ARGS+=("--device" "/dev/kvm:/dev/kvm")
+fi
+
+#
+# Possibly forward Environment
+#
+# If the caller requests a preserved environment, we forward
+# the environment to the container. It is up to the container
+# to actually source this.
+if (( CHERRY_PRESERVE )) ; then
+        CHERRY_ENV="$(export)"
+        ARGS_ENT+=("-p")
+fi
+export CHERRY_ENV
+ARGS+=("--env" "CHERRY_ENV")
+
+#
+# Possibly enter debug mode
+#
+# Forward debug-mode to the internal entry-point, if requested
+# by the caller.
+if (( CHERRY_DEBUG )) ; then
+        ARGS_ENT+=("-d")
+fi
+
+#
+# Forward workdir
+#
+# Make sure to mount the current working directory into the
+# machine. We always mark it read-only to prevent any data
+# loss due to malfunctioning machines.
+ARGS+=("--volume" "${PWD}:/var/lib/cherryimages/src:ro")
+
+#
+# Bind Log File
+#
+# If requested, we bind the specified host log-file into
+# the guest machine. The guest will forward all syslog
+# entries of the VM there.
+if [[ ! -z ${CHERRY_VM_LOG} ]] ; then
+        echo >"${CHERRY_VM_LOG}"
+        ARGS+=("--mount" "type=bind,source=$(readlink -f "${CHERRY_VM_LOG}"),target=/var/lib/cherryimages/log")
+fi
+
+#
+# Bind Executable
+#
+# If requested, we bind the specified host executable into
+# the guest machine. This obviously only works for scripts
+# and executables of machine-compatible formats.
+if (( CHERRY_BIND )) ; then
+        ARGS+=("--volume" "$(readlink -f "${1}"):/var/lib/cherryimages/bin/exe:ro")
+fi
+
+if [[ ${CHERRY_VM_TARGET} = "auto" ]] ; then
+        #
+        # Shortcut Emulation
+        #
+        # If no target architecture is selected, we shortcut
+        # the emulation and directly execute the runnr in
+        # the docker container. We follow the same environment
+        # as the emulation.
+        ARGS+=("--user" "cherryimages:cherryimages")
+        ARGS+=("--workdir" "/var/lib/cherryimages/home")
+
+        if [[ -z ${CHERRY_VM_IMAGE} ]] ; then
+                ARGS+=("cherrypick/cherryimages-${CHERRY_VM_TYPE}:${CHERRY_VM_HOST}-latest")
+        else
+                ARGS+=("${CHERRY_VM_IMAGE}")
+        fi
+else
+        #
+        # Spawn Emulator
+        #
+        # In case of real machine emulation, we need to pick
+        # a suitable docker image, that implements the vmrun
+        # API. See its definition for details.
+        if [[ -z ${CHERRY_VM_IMAGE} ]] ; then
+                ARGS+=("cherrypick/cherryimages-fedora-vmrun:${CHERRY_VM_TYPE}-${CHERRY_VM_HOST}-to-${CHERRY_VM_TARGET}-latest")
+        else
+                ARGS+=("${CHERRY_VM_IMAGE}")
+        fi
+
+        #
+        # Append entrypoint arguments
+        #
+        # We use a custom entrypoints in the machine emulators,
+        # which we here need to pass its arguments. Anything
+        # after '--' is interpreted as the command to execute.
+        ARGS+=("${ARGS_ENT[@]}" "--")
+fi
+
+#
+# Pass Commandline
+#
+# Pick the host/guest executable, as requested, and append
+# the commandline for the guest to invoke.
+# Note that anything after the image-name is interpreted as
+# the commandline for the docker container. Hence, no need
+# to pass '--' to docker-run (which even fails to parse it).
+if (( CHERRY_BIND )) ; then
+        ARGS+=("/var/lib/cherryimages/bin/exe")
+        ARGS+=("${@:2}")
+else
+        ARGS+=("${@:1}")
+fi
+
+#
+# Invoke Container
+${CHERRY_DOCKER} run "${ARGS[@]}"
