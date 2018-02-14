@@ -134,8 +134,8 @@ CHERRY_QEMU_ARGS+=" -initrd /var/lib/cherryimages/stage-${CHERRY_FEDORA_ARCH}/in
 # pass volumes
 CHERRY_QEMU_ARGS+=" -drive id=hd0,if=none,format=qcow2,file=/var/lib/cherryimages/stage-${CHERRY_FEDORA_ARCH}/runtime.qcow2"
 CHERRY_QEMU_ARGS+=" -device virtio-blk-pci,drive=hd0"
-CHERRY_QEMU_ARGS+=" -drive id=hd1,if=none,readonly,format=raw,file=fat:16:/var/lib/cherryimages/bin"
-CHERRY_QEMU_ARGS+=" -device virtio-blk-pci,drive=hd1"
+CHERRY_QEMU_ARGS+=" -fsdev local,id=hd1,readonly,security_model=none,path=/var/lib/cherryimages/bin"
+CHERRY_QEMU_ARGS+=" -device virtio-9p-pci,fsdev=hd1,mount_tag=cherryimages-bin"
 CHERRY_QEMU_ARGS+=" -fsdev local,id=hd2,readonly,security_model=none,path=/var/lib/cherryimages/src"
 CHERRY_QEMU_ARGS+=" -device virtio-9p-pci,fsdev=hd2,mount_tag=cherryimages-src"
 
@@ -189,6 +189,7 @@ set -e
 export CHERRY_ENV="\$(cat /var/lib/cherryimages/bin/env)"
 exec ${@@Q}
 EOF
+chmod +x "/var/lib/cherryimages/bin/main"
 
 # run machine
 msg "Starting machine"

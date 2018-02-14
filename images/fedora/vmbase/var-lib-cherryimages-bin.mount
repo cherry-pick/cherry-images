@@ -1,5 +1,5 @@
 [Mount]
-What=/dev/vdb1
+What=cherryimages-bin
 Where=/var/lib/cherryimages/bin
-Type=vfat
-Options=ro
+Type=9p
+Options=ro,trans=virtio,version=9p2000.L
