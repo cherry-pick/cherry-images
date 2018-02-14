@@ -73,6 +73,14 @@ i686)
         CHERRY_TTY_STDIO="ttyS0"
         CHERRY_TTY_LOG="ttyS4"
         ;;
+ppc64)
+        CHERRY_TTY_STDIO="ttyS0"
+        CHERRY_TTY_LOG="ttyS4"
+        ;;
+ppc64le)
+        CHERRY_TTY_STDIO="ttyS0"
+        CHERRY_TTY_LOG="ttyS4"
+        ;;
 s390x)
         CHERRY_TTY_STDIO="ttyS0"
         CHERRY_TTY_LOG="ttyS4"
