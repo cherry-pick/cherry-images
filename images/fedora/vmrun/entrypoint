@@ -172,6 +172,7 @@ rm -f -- "/var/lib/cherryimages/output"
 if [[ ! -f "/var/lib/cherryimages/stage-${CHERRY_FEDORA_ARCH}/runtime.qcow2" ]] ; then
         qemu-img \
                 create \
+                -q \
                 -f qcow2 \
                 -b image.qcow2 \
                 -F qcow2 \
