@@ -191,9 +191,11 @@ exec ${@@Q}
 EOF
 
 # run machine
+msg "Starting machine"
 "qemu-system-${CHERRY_QEMU_BIN_ARCH}" \
         -append "${CHERRY_KERNEL_ARGS}" \
         ${CHERRY_QEMU_ARGS}
+msg "Machine stopped"
 
 # verify machine executed successfully
 [[ $(cat "/var/lib/cherryimages/output") = "success" ]] || exit 1

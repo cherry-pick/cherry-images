@@ -15,7 +15,9 @@ User=cherryimages
 Group=cherryimages
 FailureAction=poweroff-force
 WorkingDirectory=/var/lib/cherryimages/home
+ExecStartPre=+/bin/bash -c 'echo "==> Machine started"'
 ExecStart=/var/lib/cherryimages/bin/main
+ExecStartPost=+/bin/bash -c 'echo "==> Stopping machine"'
 ExecStartPost=+/bin/bash -c 'echo -n success >/dev/virtio-ports/cherryimages.output'
 ExecStartPost=+/usr/bin/systemctl poweroff
 StandardInput=tty-force
