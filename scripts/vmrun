@@ -44,6 +44,7 @@ Options:
   -b                            Bind EXECUTABLE from host into guest
   -p                            Preserve environment
   -V TYPE                       Type of VM image
+  -Q TAG                        Tag of VM image
   -H ARCH                       Host architecture
   -T ARCH                       Target architecture
   -I IMAGE                      Name of image to use
@@ -53,7 +54,7 @@ EOF
 
 #
 # Parse Options
-while getopts ':bdhkpH:I:L:T:V:' flag ; do
+while getopts ':bdhkpH:I:L:Q:T:V:' flag ; do
         case $flag in
         b)
                 # Bind executable from host to guest
@@ -87,6 +88,10 @@ while getopts ':bdhkpH:I:L:T:V:' flag ; do
         L)
                 # Log file
                 CHERRY_VM_LOG="${OPTARG}"
+                ;;
+        Q)
+                # VM Tag
+                CHERRY_VM_TAG="${OPTARG}"
                 ;;
         T)
                 # Target machine
