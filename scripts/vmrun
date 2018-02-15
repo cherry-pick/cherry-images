@@ -17,6 +17,7 @@ CHERRY_PRESERVE=0
 CHERRY_VM_IMAGE=
 CHERRY_VM_HOST="auto"
 CHERRY_VM_LOG=
+CHERRY_VM_TAG="latest"
 CHERRY_VM_TARGET="auto"
 CHERRY_VM_TYPE="fedora-ci"
 
@@ -221,7 +222,7 @@ if [[ ${CHERRY_VM_TARGET} = "auto" ]] ; then
         ARGS+=("--workdir" "/var/lib/cherryimages/home")
 
         if [[ -z ${CHERRY_VM_IMAGE} ]] ; then
-                ARGS+=("cherrypick/cherryimages-${CHERRY_VM_TYPE}:${CHERRY_VM_HOST}-latest")
+                ARGS+=("cherrypick/cherryimages-${CHERRY_VM_TYPE}:${CHERRY_VM_HOST}-${CHERRY_VM_TAG}")
         else
                 ARGS+=("${CHERRY_VM_IMAGE}")
         fi
@@ -233,7 +234,7 @@ else
         # a suitable docker image, that implements the vmrun
         # API. See its definition for details.
         if [[ -z ${CHERRY_VM_IMAGE} ]] ; then
-                ARGS+=("cherrypick/cherryimages-fedora-vmrun:${CHERRY_VM_TYPE}-${CHERRY_VM_HOST}-to-${CHERRY_VM_TARGET}-latest")
+                ARGS+=("cherrypick/cherryimages-fedora-vmrun:${CHERRY_VM_TYPE}-${CHERRY_VM_HOST}-to-${CHERRY_VM_TARGET}-${CHERRY_VM_TAG}")
         else
                 ARGS+=("${CHERRY_VM_IMAGE}")
         fi
