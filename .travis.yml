@@ -33,7 +33,7 @@ stages:
   - name: tag
     if:     type = push
         AND repo = cherry-pick/cherry-images
-        AND branch =~ ^v[0-9]+$
+        AND branch = v1
 
 jobs:
   include:
