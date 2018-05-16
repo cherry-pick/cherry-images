@@ -21,6 +21,7 @@ RUN dnf \
         --forcearch="${CHERRY_FEDORA_ARCH}" \
         --setopt=install_weak_deps=False \
         install \
+                audit-libs-devel \
                 autoconf \
                 automake \
                 binutils-devel \
@@ -41,7 +42,9 @@ RUN dnf \
                 grep \
                 groff \
                 gzip \
+                libcap-ng-devel \
                 libtool \
+                libselinux-devel \
                 lld \
                 m4 \
                 make \
