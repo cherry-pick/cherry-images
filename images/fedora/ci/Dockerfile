@@ -42,6 +42,8 @@ RUN dnf \
                 grep \
                 groff \
                 gzip \
+                htop \
+                iproute \
                 libcap-ng-devel \
                 libtool \
                 libselinux-devel \
@@ -63,4 +65,5 @@ RUN dnf \
                 util-linux \
                 which \
                 valgrind \
+                vim \
         && dnf clean all
