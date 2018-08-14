@@ -220,11 +220,14 @@ if [[ ${CHERRY_VM_TARGET} = "auto" ]] ; then
         # Shortcut Emulation
         #
         # If no target architecture is selected, we shortcut
-        # the emulation and directly execute the runnr in
+        # the emulation and directly execute the runner in
         # the docker container. We follow the same environment
-        # as the emulation.
+        # as the emulation. However, we run in privileged mode
+        # to guarantee that we can actually run all tests. We
+        # are no sandbox, so the host is in no way protected.
         ARGS+=("--user" "cherryimages:cherryimages")
         ARGS+=("--workdir" "/var/lib/cherryimages/home")
+        ARGS+=("--privileged")
 
         if [[ -z ${CHERRY_VM_IMAGE} ]] ; then
                 ARGS+=("cherrypick/cherryimages-${CHERRY_VM_TYPE}:${CHERRY_VM_HOST}-${CHERRY_VM_TAG}")
