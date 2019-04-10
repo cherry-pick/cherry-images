@@ -142,11 +142,6 @@ ARGS+=("--rm")
 ARGS+=("--tty")
 
 #
-# XXX: This is a temporary workaround to test whether we can
-#      extend the default memory to 4G in the VM runs.
-ARGS_ENT+=("-m" "4G")
-
-#
 # Execution Unit
 #
 # Caller must provide command to execute, otherwise we simply
