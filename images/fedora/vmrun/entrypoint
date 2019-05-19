@@ -158,6 +158,9 @@ CHERRY_KERNEL_ARGS+=" rw root=/dev/vda"
 # disable security for now
 CHERRY_KERNEL_ARGS+=" selinux=0 audit=0"
 
+# make the kernel reboot on panic
+CHERRY_KERNEL_ARGS+=" panic=20"
+
 # inline log if requested
 if (( CHERRY_DEBUG )) ; then
         CHERRY_KERNEL_ARGS+=" console=${CHERRY_TTY_STDIO}"
