@@ -82,9 +82,14 @@ RUN mkdir -p "/var/lib/cherryimages" \
 RUN chown -R cherryimages:cherryimages "/var/lib/cherryimages"
 
 #
-# Remember kernel location
+# Generate initrd and remember the location
 #
 
+RUN mkdir -p "/boot/$(cat "/etc/machine-id")"
+RUN kernel-install \
+        "add" \
+        "$(rpm -q --qf "%{version}-%{release}.%{arch}" kernel)" \
+        "/lib/modules/$(rpm -q --qf "%{version}-%{release}.%{arch}" kernel)/vmlinuz"
 RUN ln -s \
         "/boot/$(cat "/etc/machine-id")/$(rpm -q --qf "%{version}-%{release}.%{arch}" kernel)/" \
         "/var/lib/cherryimages/boot"
