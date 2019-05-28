@@ -28,7 +28,7 @@ FROM fedora AS bootstrap
 
 ARG CHERRY_QEMU_ARCHS="arm i386 ppc64 ppc64le s390x x86_64"
 ARG CHERRY_QEMU_SOURCE="https://github.com/multiarch/qemu-user-static/releases/download/"
-ARG CHERRY_QEMU_VERSION=v2.9.1-1
+ARG CHERRY_QEMU_VERSION=v4.0.0
 
 #
 # qemu-user-static
