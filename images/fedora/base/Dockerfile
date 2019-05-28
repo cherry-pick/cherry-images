@@ -78,6 +78,7 @@ RUN dnf \
                 --setopt=install_weak_deps=False \
                 install \
                         bash \
+                        ca-certificates \
                         dnf \
                         fedora-release \
                         tar \
