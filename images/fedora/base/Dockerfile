@@ -68,6 +68,7 @@ COPY --from=source "/var/lib/cherryimages/qemu/" "/var/lib/cherryimages/sysroot/
 
 RUN dnf \
                 -y \
+                -v \
                 --nodocs \
                 --repo=fedora \
                 --repo=updates \

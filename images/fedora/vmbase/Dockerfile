@@ -32,6 +32,7 @@ RUN echo "dummy.cmdline" >"/etc/kernel/cmdline" # must be non-empty
 
 RUN dnf \
                 -y \
+                -v \
                 --nodocs \
                 --forcearch="${CHERRY_FEDORA_ARCH}" \
                 --setopt=install_weak_deps=False \

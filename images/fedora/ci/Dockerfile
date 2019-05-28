@@ -17,6 +17,7 @@ ARG CHERRY_FEDORA_ARCH
 
 RUN dnf \
         -y \
+        -v \
         --nodocs \
         --forcearch="${CHERRY_FEDORA_ARCH}" \
         --setopt=install_weak_deps=False \

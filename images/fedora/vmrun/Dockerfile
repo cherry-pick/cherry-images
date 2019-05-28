@@ -38,6 +38,7 @@ ENV CHERRY_QEMU_PKG_ARCH=${CHERRY_QEMU_PKG_ARCH}
 
 RUN dnf \
         -y \
+        -v \
         --nodocs \
         --forcearch="${CHERRY_FEDORA_ARCH_HOST}" \
         --setopt=install_weak_deps=False \
