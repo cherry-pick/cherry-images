@@ -78,7 +78,6 @@ RUN dnf \
                 --setopt=install_weak_deps=False \
                 install \
                         bash \
-                        ca-certificates \
                         dnf \
                         fedora-release \
                         tar \
@@ -86,11 +85,11 @@ RUN dnf \
                 --installroot=/var/lib/cherryimages/sysroot \
                 clean all
 
-# Fedora `dnf` is broken for armv7hl
-RUN sed \
-        -i \
-        "s/'armv7hnl', 'armv8hl'/'armv7hnl', 'armv7hcnl', 'armv8hl'/" \
-        /var/lib/cherryimages/sysroot/usr/lib/python3.7/site-packages/dnf/rpm/__init__.py
+# Fedora `dnf` is broken for armv7hl (only needed for >=F29)
+#RUN sed \
+#        -i \
+#        "s/'armv7hnl', 'armv8hl'/'armv7hnl', 'armv7hcnl', 'armv8hl'/" \
+#        /var/lib/cherryimages/sysroot/usr/lib/python3.7/site-packages/dnf/rpm/__init__.py
 
 RUN tar \
         -p \
