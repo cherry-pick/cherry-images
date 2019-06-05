@@ -15,7 +15,7 @@ ARCH_HOST		?= x86_64
 
 CI_BASE			?= fedora-vmbase
 VMRUN_BASE		?= fedora-ci
-FEDORA_RELEASE		?= 27
+FEDORA_RELEASE		?= 30
 
 ifeq ($(ARCH),armv7hl)
   FEDORA_ARCH		= armv7hl

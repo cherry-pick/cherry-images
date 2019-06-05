@@ -39,36 +39,26 @@ jobs:
   include:
     - stage: deploy-base
       script:
-        - make ci-base ARCH=armv7hl DEPLOY=yes TAG=latest
-    - script:
         - make ci-base ARCH=i686 DEPLOY=yes TAG=latest
     - script:
         - make ci-base ARCH=x86_64 DEPLOY=yes TAG=latest
     - stage: deploy-vmbase
       script:
-        - make ci-vmbase ARCH=armv7hl DEPLOY=yes TAG=latest
-    - script:
         - make ci-vmbase ARCH=i686 DEPLOY=yes TAG=latest
     - script:
         - make ci-vmbase ARCH=x86_64 DEPLOY=yes TAG=latest
     - stage: deploy-ci
       script:
-        - make ci-ci ARCH=armv7hl DEPLOY=yes TAG=latest
-    - script:
         - make ci-ci ARCH=i686 DEPLOY=yes TAG=latest
     - script:
         - make ci-ci ARCH=x86_64 DEPLOY=yes TAG=latest
     - stage: deploy-vmrun
       script:
-        - make ci-vmrun ARCH=armv7hl DEPLOY=yes TAG=latest
-    - script:
         - make ci-vmrun ARCH=i686 DEPLOY=yes TAG=latest
     - script:
         - make ci-vmrun ARCH=x86_64 DEPLOY=yes TAG=latest
     - stage: tag
       script:
-        - make ci-tag-push ARCH=armv7hl "TAG=${TRAVIS_BRANCH}"
-    - script:
         - make ci-tag-push ARCH=i686 "TAG=${TRAVIS_BRANCH}"
     - script:
         - make ci-tag-push ARCH=x86_64 "TAG=${TRAVIS_BRANCH}"
